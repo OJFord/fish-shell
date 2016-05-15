@@ -507,32 +507,28 @@ bool env_universal_t::move_new_vars_file_into_place(const wcstring &src, const w
 }
 
 static wcstring fishd_get_config() {
-    bool done = false;
     wcstring result;
 
+    env_var_t fish_dir = env_get_string(L"FISH_CONFIG_HOME", ENV_GLOBAL | ENV_EXPORT);
     env_var_t xdg_dir = env_get_string(L"XDG_CONFIG_HOME", ENV_GLOBAL | ENV_EXPORT);
-    if (!xdg_dir.missing_or_empty()) {
+    env_var_t home = env_get_string(L"HOME", ENV_GLOBAL | ENV_EXPORT);
+
+    if (!fish_dir.missing_or_empty()) {
+        result = fish_dir;
+    } else if (!xdg_dir.missing_or_empty()) {
         result = xdg_dir;
         append_path_component(result, L"/fish");
-        if (!create_directory(result)) {
-            done = true;
-        }
-    } else {
-        env_var_t home = env_get_string(L"HOME", ENV_GLOBAL | ENV_EXPORT);
-        if (!home.missing_or_empty()) {
-            result = home;
-            append_path_component(result, L"/.config/fish");
-            if (!create_directory(result)) {
-                done = 1;
-            }
-        }
+    } else if (!home.missing_or_empty()) {
+        result = home;
+        append_path_component(result, L"/.config/fish");
     }
 
-    if (!done) {
+    if (create_directory(result)) {
         // Bad juju.
         debug(0, _(L"Unable to create a configuration directory for fish. Your personal settings "
-                   L"will not be saved. Please set the $XDG_CONFIG_HOME variable to a directory "
-                   L"where the current user has write access."));
+                   L"will not be saved. Please set one of the $FISH_CONFIG_HOME or "
+                   L"$XDG_CONFIG_HOME variables to a directory where the current user has write "
+                   L"access."));
         result.clear();
     }
 

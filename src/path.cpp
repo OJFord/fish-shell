@@ -225,32 +225,29 @@ wcstring path_apply_working_directory(const wcstring &path, const wcstring &work
 }
 
 static wcstring path_create_config() {
-    bool done = false;
     wcstring res;
 
+    const env_var_t fish_dir = env_get_string(L"FISH_CONFIG_HOME");
     const env_var_t xdg_dir = env_get_string(L"XDG_CONFIG_HOME");
-    if (!xdg_dir.missing()) {
+    const env_var_t home = env_get_string(L"HOME");
+
+    if (!fish_dir.missing()) {
+        res = fish_dir;
+    } else if (!xdg_dir.missing()) {
         res = xdg_dir + L"/fish";
-        if (!create_directory(res)) {
-            done = true;
-        }
-    } else {
-        const env_var_t home = env_get_string(L"HOME");
-        if (!home.missing()) {
-            res = home + L"/.config/fish";
-            if (!create_directory(res)) {
-                done = true;
-            }
-        }
+    } else if (!home.missing()) {
+        res = home + L"/.config/fish";
     }
 
-    if (!done) {
+    if (res.empty() || create_directory(res)) {
         res.clear();
 
         debug(0, _(L"Unable to create a configuration directory for fish. Your personal settings "
-                   L"will not be saved. Please set the $XDG_CONFIG_HOME variable to a directory "
-                   L"where the current user has write access."));
+                   L"will not be saved. Please set one of the $FISH_CONFIG_HOME or "
+                   L"$XDG_CONFIG_HOME variables to a directory where the current user has write "
+                   L"access."));
     }
+
     return res;
 }
 
